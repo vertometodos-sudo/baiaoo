@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f1a0f">
+<title>MeuLink</title>
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.hidden{display:none!important}
+
+/* ---------- PÁGINA PÚBLICA ---------- */
+body.pub{color:#fff;background:#0f1a0f;min-height:100vh;display:flex;justify-content:center}
+.bg{position:fixed;inset:0;z-index:0;background:linear-gradient(160deg,#1f3a1f,#0b120b);background-size:cover;background-position:center}
+.bg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.15),rgba(0,0,0,.05) 40%,rgba(0,0,0,.55))}
+.pubmain{position:relative;z-index:1;width:100%;max-width:480px;padding:56px 20px 40px;display:flex;flex-direction:column;align-items:center;gap:14px;min-height:100vh;min-height:100dvh}
+.pubmain .blocolinks{width:100%;display:flex;flex-direction:column;align-items:center}
+.pubmain.pos-meio .blocolinks{margin-top:22vh;margin-top:22dvh}
+.pubmain.pos-baixo .blocolinks{margin-top:auto}
+.avatar{width:104px;height:104px;border-radius:50%;border:4px solid #111;object-fit:cover;background:#2a4a2a;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.pubmain h1{font-size:28px;font-weight:700;text-shadow:0 2px 10px rgba(0,0,0,.5);text-align:center}
+.pubbio{font-size:15px;text-shadow:0 1px 6px rgba(0,0,0,.6);text-align:center;margin-bottom:10px;white-space:pre-line}
+.links{width:100%;display:flex;flex-direction:column;gap:12px}
+a.card{display:flex;align-items:center;gap:14px;text-decoration:none;color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:12px 14px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 6px 18px rgba(0,0,0,.3);transition:transform .12s,filter .12s}
+a.card:active{transform:scale(.98)}
+.icon{width:52px;height:52px;border-radius:12px;flex-shrink:0;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px}
+.ctxt{flex:1;min-width:0}
+.ctitle{font-size:17px;font-weight:600}
+.csub{font-size:13px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.arrow{width:34px;height:34px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.avisos{width:100%;margin-top:22px;text-align:left;border-top:1px solid;padding-top:14px;display:flex;flex-direction:column;gap:8px;font-size:12px;line-height:1.4}
+.avisos .av18,.avisos .avselo{display:flex;gap:8px;align-items:flex-start}
+.selo18{flex-shrink:0;font-weight:800;font-size:11px;border:1.5px solid;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center}
+.pubmain .avisos{text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.pubfoot{margin-top:28px;font-size:12px;opacity:.6;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.pubfoot a{color:#fff}
+
+/* ---------- PAINÉIS ---------- */
+body.painel{background:#f3f4f6;color:#111827;min-height:100vh}
+.wrap{max-width:560px;margin:0 auto;padding:20px 16px 80px}
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:8px}
+.top h2{font-size:20px}
+.box{background:#fff;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.box h3{font-size:15px;margin-bottom:12px}
+label{display:block;font-size:13px;font-weight:600;color:#374151;margin:10px 0 4px}
+input[type=text],input[type=email],input[type=password],input[type=url],input[type=tel],textarea,input[type=search]{width:100%;font-size:16px;padding:11px 12px;border:1px solid #d1d5db;border-radius:10px;background:#fff;color:#111}
+textarea{resize:vertical;min-height:70px;font-family:inherit}
+input:focus,textarea:focus{outline:2px solid #2563eb;border-color:transparent}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:15px;font-weight:600;padding:11px 16px;border-radius:10px;border:0;cursor:pointer;background:#111827;color:#fff;text-decoration:none}
+.btn.full{width:100%}
+.btn.sec{background:#e5e7eb;color:#111}
+.btn.verde{background:#16a34a}
+.btn.verm{background:#dc2626}
+.btn.peq{padding:7px 10px;font-size:13px}
+.btn:disabled{opacity:.5}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tabs button{flex:1;padding:10px;border:0;border-radius:10px;background:#e5e7eb;font-weight:600;font-size:15px}
+.tabs button.on{background:#111827;color:#fff}
+.msg{font-size:14px;padding:10px 12px;border-radius:10px;margin-top:10px}
+.msg.erro{background:#fee2e2;color:#991b1b}
+.msg.ok{background:#dcfce7;color:#166534}
+.msg.aviso{background:#fef3c7;color:#92400e}
+.hint{font-size:12px;color:#6b7280;margin-top:4px}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:13px;font-weight:400;margin-top:12px}
+.check input{margin-top:3px;width:18px;height:18px}
+.imgrow{display:flex;gap:12px;align-items:center}
+.prev{width:64px;height:64px;border-radius:12px;object-fit:cover;background:#e5e7eb;flex-shrink:0}
+.prev.round{border-radius:50%}
+.linkrow{border:1px solid #e5e7eb;border-radius:12px;padding:10px;margin-bottom:10px}
+.linkrow input{margin-bottom:6px}
+.linkacts{display:flex;gap:6px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+.prev.mini{width:40px;height:40px;border-radius:10px}
+.telbox{display:flex;align-items:stretch;border:1px solid #d1d5db;border-radius:10px;overflow:hidden;background:#fff}
+.telbox .ddi{display:flex;align-items:center;padding:0 10px;background:#f3f4f6;border-right:1px solid #d1d5db;font-size:15px;font-weight:600;color:#374151;white-space:nowrap;user-select:none}
+.telbox input{border:0!important;border-radius:0!important;flex:1;min-width:0}
+.telbox:focus-within{outline:2px solid #2563eb;border-color:transparent}
+.telbox input:focus{outline:none}
+.colorrow{display:flex;align-items:center;gap:10px}
+.colorrow input[type=color]{width:52px;height:40px;border:0;background:none;padding:0}
+.sticky{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(243,244,246,.95);border-top:1px solid #e5e7eb}
+.sticky .btn{max-width:528px;margin:0 auto;display:flex}
+.stat{display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-bottom:1px solid #f3f4f6}
+.stat span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:10px}
+.cli{border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:10px}
+.cli .l1{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cli .nm{font-weight:700}
+.cli .meta{font-size:12px;color:#6b7280;margin-top:4px;word-break:break-all}
+.badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px}
+.badge.on{background:#dcfce7;color:#166534}
+.badge.off{background:#fee2e2;color:#991b1b}
+.kpis{display:flex;gap:10px;margin-bottom:14px}
+.kpi{flex:1;background:#fff;border-radius:12px;padding:12px;text-align:center}
+.kpi b{display:block;font-size:22px}
+.kpi span{font-size:12px;color:#6b7280}
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.centro{min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:20px}
+.termos p,.termos li{font-size:14px;line-height:1.55;margin-bottom:8px}
+.termos ol{padding-left:20px}
+</style>
+<meta name="description" content="Sua página de links, com seu nome, sua foto e seus botões. Você mesmo edita pelo celular."><meta property="og:type" content="website"><meta property="og:site_name" content="MeuLink"><meta property="og:title" content="MeuLink"><meta property="og:description" content="Sua página de links, com seu nome, sua foto e seus botões. Você mesmo edita pelo celular."><meta property="og:url" content="https://meulink.blog/"><meta name="twitter:title" content="MeuLink"><meta name="twitter:description" content="Sua página de links, com seu nome, sua foto e seus botões. Você mesmo edita pelo celular."><meta name="twitter:card" content="summary"></head>
+<body>
+<div id="app"></div>
+
+<script>
+/* =====================================================================
+   PLATAFORMA DE LINK NA BIO
+   Rotas:  /            página inicial
+           /admin       painel do cliente
+           /master      seu painel
+           /termos      termos de uso
+           /qualquer    página pública do cliente
+   ===================================================================== */
+const CFG = window.APP_CONFIG || {};
+const app = document.getElementById("app");
+const PLATAFORMA = CFG.NOME_PLATAFORMA || "MeuLink";
+const RESERVADOS = ["admin","master","termos","login","api","assets","www"];
+let sb = null;
+
+/* ---------- utilidades ---------- */
+function h(tag, attrs, ...kids){
+  const el = document.createElement(tag);
+  for (const [k,v] of Object.entries(attrs || {})){
+    if (v === null || v === undefined || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k === "text") el.textContent = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k === "style") el.style.cssText = v;
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()){
+    if (kid === null || kid === undefined || kid === false) continue;
+    el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+  }
+  return el;
+}
+function limpar(cls){ document.body.className = cls; app.innerHTML = ""; }
+function toast(t){
+  const el = h("div",{class:"toast",text:t});
+  document.body.append(el);
+  setTimeout(()=>el.remove(), 2600);
+}
+function safeUrl(u){
+  try{
+    const x = new URL(u);
+    return ["http:","https:","mailto:","tel:"].includes(x.protocol) ? x.toString() : "#";
+  }catch{ return "#"; }
+}
+function normalizarUrl(u){
+  u = (u || "").trim();
+  if (!u) return "";
+  if (/^(https?:|mailto:|tel:)/i.test(u)) return u;
+  return "https://" + u;
+}
+function normalizarSlug(s){
+  return (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"")
+    .replace(/[^a-z0-9-]/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"").slice(0,30);
+}
+function slugValido(s){ return /^[a-z0-9][a-z0-9-]{1,29}$/.test(s) && !RESERVADOS.includes(s); }
+function mascaraTel(v){
+  const d = (v || "").replace(/\D/g,"").slice(0,11);
+  if (d.length <= 2) return d ? "(" + d : "";
+  if (d.length <= 6) return `(${d.slice(0,2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+}
+function telValido(v){ const d = (v||"").replace(/\D/g,""); return d.length === 10 || d.length === 11; }
+function normalizarInsta(v){
+  v = (v || "").trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i,"").replace(/[\/?#].*$/,"").replace(/^@+/,"");
+  return v.toLowerCase();
+}
+function instaValido(v){ return /^[a-z0-9._]{1,30}$/.test(v); }
+function campoTel(valor){
+  const el = h("input",{type:"tel",inputmode:"numeric",autocomplete:"tel-national",placeholder:"(71) 99999-9999",value:mascaraTel(valor)});
+  el.addEventListener("input",()=>{
+    let d = el.value.replace(/\D/g,"");
+    if (d.length > 11 && d.startsWith("55")) d = d.slice(2);   // colou com +55 / 55
+    el.value = mascaraTel(d);
+  });
+  const caixa = h("div",{class:"telbox"}, h("span",{class:"ddi",text:"🇧🇷 +55"}), el);
+  // permite ler o valor direto da caixa (inTel.value / tel.value)
+  Object.defineProperty(caixa, "value", { get:()=>el.value, set:(v)=>{ el.value = mascaraTel(v); } });
+  return caixa;
+}
+function campoInsta(valor){
+  const el = h("input",{type:"text",autocapitalize:"none",autocorrect:"off",placeholder:"@seuinstagram",value:valor ? "@"+valor : ""});
+  el.addEventListener("blur",()=>{ const n = normalizarInsta(el.value); el.value = n ? "@"+n : ""; });
+  return el;
+}
+function dominioDe(u){ try{ return new URL(u).hostname.replace(/^www\./,""); }catch{ return u; } }
+function suspeitoAposta(u){
+  const d = dominioDe(u).toLowerCase();
+  return /bet|cassino|casino|slot|tigr|aposta|pix.?game/.test(d) && !d.endsWith(".bet.br");
+}
+/* aviso de jogo responsável (+18) e selo de casas autorizadas */
+function blocoAvisos(links, escuro){
+  const temIrregular = (links || []).some(l=>suspeitoAposta(l.url || ""));
+  const cor = escuro ? "rgba(255,255,255,.85)" : "#4b5563";
+  const borda = escuro ? "rgba(255,255,255,.25)" : "#d1d5db";
+  return h("div",{class:"avisos",style:`color:${cor};border-color:${borda}`},
+    h("div",{class:"av18"},
+      h("span",{class:"selo18",style:`border-color:${cor}`,text:"18+"}),
+      h("span",{text:"Proibido para menores de 18 anos. Jogue com responsabilidade: apostas envolvem risco de perda e não são forma de renda."})
+    ),
+    temIrregular ? null : h("div",{class:"avselo"},
+      h("span",{text:"✔"}),
+      h("span",{text:"Divulgamos apenas casas de apostas autorizadas pelo Ministério da Fazenda."})
+    )
+  );
+}
+function dataBR(d){ return new Date(d).toLocaleDateString("pt-BR"); }
+function svgSeta(){
+  const s = document.createElementNS("http://www.w3.org/2000/svg","svg");
+  s.setAttribute("width","14"); s.setAttribute("height","14"); s.setAttribute("viewBox","0 0 24 24");
+  s.innerHTML = '<path d="M7 17L17 7M9 7h8v8" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>';
+  return s;
+}
+function traduzErro(e){
+  const m = (e && (e.message || e.error_description)) || String(e);
+  if (/Invalid login credentials/i.test(m)) return "E-mail ou senha incorretos.";
+  if (/Email not confirmed/i.test(m)) return "Confirme seu e-mail antes de entrar (veja sua caixa de entrada e o spam).";
+  if (/already registered/i.test(m)) return "Esse e-mail já tem conta. Use a aba Entrar.";
+  if (/Password should be at least|weak.?password/i.test(m)) return "A senha precisa ter pelo menos 6 caracteres.";
+  if (/duplicate key|profiles_slug_key/i.test(m)) return "Esse endereço já está em uso. Escolha outro.";
+  if (/rate limit/i.test(m)) return "Muitas tentativas. Espere alguns minutos e tente de novo.";
+  return m;
+}
+
+/* ---------- imagens: reduz e converte p/ JPG (resolve HEIC do iPhone) ---------- */
+function carregarImg(src){
+  return new Promise((ok, falha)=>{ const i = new Image(); i.onload=()=>ok(i); i.onerror=falha; i.src=src; });
+}
+async function prepararImagem(file, max){
+  const url = URL.createObjectURL(file);
+  try{
+    const img = await carregarImg(url);
+    const esc = Math.min(1, max / Math.max(img.width, img.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.width * esc); c.height = Math.round(img.height * esc);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    return await new Promise(r => c.toBlob(r, "image/jpeg", 0.85));
+  } finally { URL.revokeObjectURL(url); }
+}
+async function enviarImagem(uid, tipo, file){
+  const blob = await prepararImagem(file, tipo === "fundo" ? 1600 : 600);
+  if (!blob) throw new Error("Não consegui ler essa imagem. Tente outra foto.");
+  const caminho = `${uid}/${tipo}-${Date.now()}.jpg`;
+  const { error } = await sb.storage.from("midia").upload(caminho, blob, { contentType:"image/jpeg", upsert:true });
+  if (error) throw error;
+  return sb.storage.from("midia").getPublicUrl(caminho).data.publicUrl;
+}
+
+/* =====================================================================
+   PÁGINA PÚBLICA
+   ===================================================================== */
+async function paginaPublica(slug){
+  const { data, error } = await sb.from("profiles")
+    .select("id,slug,nome,bio,avatar_url,fundo_url,cor,links,ativo,aviso_apostas,posicao_links")
+    .eq("slug", slug).maybeSingle();
+  if (error || !data || !data.ativo) return naoEncontrada();
+
+  limpar("pub");
+  document.title = data.nome || data.slug;
+  const entrada = new URLSearchParams(location.search);
+  const repassar = (url)=>{
+    try{
+      const u = new URL(url);
+      if (!/^https?:$/.test(u.protocol)) return url;
+      for (const [k,v] of entrada)
+        if ((k.startsWith("utm_") || k === "fbclid") && !u.searchParams.has(k)) u.searchParams.set(k, v);
+      return u.toString();
+    }catch{ return url; }
+  };
+
+  const bg = h("div",{class:"bg"});
+  if (data.fundo_url){
+    carregarImg(data.fundo_url).then(()=>{ bg.style.backgroundImage = `url("${data.fundo_url}")`; }).catch(()=>{});
+  }
+  const lista = h("div",{class:"links"});
+  (Array.isArray(data.links) ? data.links : []).forEach((l, i)=>{
+    const url = safeUrl(l.url);
+    if (url === "#") return;
+    const destino = repassar(url);
+    lista.append(h("a",{
+        class:"card", href:destino, rel:"noopener",
+        style:`background:${/^#[0-9a-fA-F]{6}$/.test(data.cor) ? data.cor : "#344e1c"}ee`,
+        onclick:()=>registrarClique(data.id, i, url, entrada.get("utm_source"))
+      },
+      (l.icone && safeUrl(l.icone) !== "#")
+        ? h("img",{class:"icon",src:l.icone,alt:"",style:"object-fit:cover"})
+        : h("div",{class:"icon",text:(l.titulo||"?").trim().charAt(0).toUpperCase()}),
+      h("div",{class:"ctxt"},
+        h("div",{class:"ctitle",text:l.titulo || "Link"}),
+        h("div",{class:"csub",text:url.replace(/^https?:\/\//,"")})
+      ),
+      h("div",{class:"arrow"}, svgSeta())
+    ));
+  });
+
+  const av = h("img",{class:"avatar",alt:""});
+  if (data.avatar_url) av.src = data.avatar_url;
+
+  const pos = ["alto","meio","baixo"].includes(data.posicao_links) ? data.posicao_links : "alto";
+  app.append(bg, h("main",{class:"pubmain pos-" + pos},
+    av,
+    h("h1",{text:data.nome || ""}),
+    data.bio ? h("p",{class:"pubbio",text:data.bio}) : null,
+    h("div",{class:"blocolinks"},
+      lista,
+      data.aviso_apostas === false ? null : blocoAvisos(data.links, true)
+    )
+  ));
+}
+
+function registrarClique(profileId, idx, url, utm){
+  try{
+    fetch(`${CFG.SUPABASE_URL}/rest/v1/cliques`, {
+      method:"POST", keepalive:true,
+      headers: Object.assign(
+        { apikey:CFG.SUPABASE_ANON_KEY, "Content-Type":"application/json", Prefer:"return=minimal" },
+        CFG.SUPABASE_ANON_KEY.startsWith("eyJ") ? { Authorization:"Bearer " + CFG.SUPABASE_ANON_KEY } : {}
+      ),
+      body:JSON.stringify({ profile_id:profileId, link_idx:idx, url, utm_source:utm || null })
+    }).catch(()=>{});
+  }catch{}
+}
+
+function naoEncontrada(){
+  limpar("painel");
+  document.title = "Página não encontrada";
+  app.append(h("div",{class:"centro"},
+    h("h2",{text:"Página não encontrada"}),
+    h("p",{text:"Esse endereço não existe ou está indisponível no momento."}),
+    h("a",{class:"btn",href:"/",text:"Ir para " + PLATAFORMA})
+  ));
+}
+
+/* =====================================================================
+   PÁGINA INICIAL
+   ===================================================================== */
+function paginaInicial(){
+  limpar("painel");
+  document.title = PLATAFORMA;
+  app.append(h("div",{class:"centro"},
+    h("h1",{text:PLATAFORMA,style:"font-size:32px"}),
+    h("p",{text:"Sua página de links, com seu nome, sua foto e seus botões. Você mesmo edita pelo celular.",style:"max-width:340px;color:#4b5563"}),
+    h("a",{class:"btn",href:"/admin",text:"Entrar / Criar minha página"}),
+    CFG.WHATSAPP_CONTATO ? h("a",{class:"btn sec",href:`https://wa.me/${CFG.WHATSAPP_CONTATO.replace(/\D/g,"")}`,text:"Falar no WhatsApp"}) : null,
+    h("a",{href:"/termos",text:"Termos de uso",style:"font-size:13px;color:#6b7280"}),
+    h("div",{style:"max-width:420px;width:100%"}, blocoAvisos([], false))
+  ));
+}
+
+/* =====================================================================
+   TERMOS DE USO
+   ===================================================================== */
+function paginaTermos(){
+  limpar("painel");
+  document.title = "Termos de uso — " + PLATAFORMA;
+  app.append(h("div",{class:"wrap termos"},
+    h("div",{class:"box"},
+      h("h3",{text:"Termos de uso — " + PLATAFORMA}),
+      h("ol",{},
+        h("li",{text:"O titular da conta é o único responsável por todo o conteúdo publicado na sua página: nome, textos, fotos e links."}),
+        h("li",{text:"É proibido publicar ou direcionar para conteúdo ilegal, incluindo: casas de apostas ou jogos de azar sem autorização da Secretaria de Prêmios e Apostas do Ministério da Fazenda; golpes, pirâmides ou promessas de ganho garantido; pirataria; conteúdo sexual envolvendo menores; venda de produtos proibidos; uso de imagem de terceiros sem autorização."}),
+        h("li",{text:"O titular declara ter direito de uso sobre as imagens que enviar."}),
+        h("li",{text:"A plataforma pode suspender ou remover qualquer página, sem aviso prévio, em caso de violação destes termos, denúncia, ordem judicial ou falta de pagamento."}),
+        h("li",{text:"A plataforma registra cliques nos links (data, link clicado e origem da campanha) para fornecer estatísticas ao titular. Não registramos dados pessoais de quem visita."}),
+        h("li",{text:"Estes termos podem ser atualizados. O uso continuado da página significa concordância com a versão vigente."})
+      ),
+      h("a",{class:"btn sec",href:"/admin",text:"Voltar"})
+    )
+  ));
+}
+
+/* =====================================================================
+   LOGIN / CADASTRO
+   ===================================================================== */
+function telaLogin(destino){
+  limpar("painel");
+  document.title = "Entrar — " + PLATAFORMA;
+  let modo = "entrar";
+  const msg = h("div");
+  const form = h("div");
+  const tabE = h("button",{text:"Entrar",onclick:()=>{modo="entrar";desenhar();}});
+  const tabC = h("button",{text:"Criar conta",onclick:()=>{modo="criar";desenhar();}});
+
+  function aviso(t, tipo){ msg.innerHTML=""; if(t) msg.append(h("div",{class:"msg "+(tipo||"erro"),text:t})); }
+
+  function desenhar(){
+    tabE.className = modo==="entrar" ? "on" : "";
+    tabC.className = modo==="criar" ? "on" : "";
+    form.innerHTML = ""; aviso("");
+    if (modo === "entrar") desenharEntrar(); else desenharCriar();
+  }
+
+  function desenharEntrar(){
+    const email = h("input",{type:"email",autocomplete:"email",placeholder:"seu@email.com"});
+    const senha = h("input",{type:"password",autocomplete:"current-password",placeholder:"Sua senha"});
+    const bt = h("button",{class:"btn full",text:"Entrar",style:"margin-top:14px",onclick:async()=>{
+      bt.disabled = true; aviso("");
+      const { error } = await sb.auth.signInWithPassword({ email:email.value.trim(), password:senha.value });
+      bt.disabled = false;
+      if (error) return aviso(traduzErro(error));
+      destino();
+    }});
+    const esqueci = h("button",{class:"btn sec full",text:"Esqueci a senha",style:"margin-top:8px",onclick:async()=>{
+      if (!email.value.trim()) return aviso("Digite seu e-mail acima primeiro.");
+      const { error } = await sb.auth.resetPasswordForEmail(email.value.trim(), { redirectTo: location.origin + "/admin" });
+      aviso(error ? traduzErro(error) : "Enviamos um link para redefinir a senha. Veja seu e-mail (e o spam).", error ? "erro" : "ok");
+    }});
+    form.append(h("label",{text:"E-mail"}), email, h("label",{text:"Senha"}), senha, bt, esqueci);
+  }
+
+  function desenharCriar(){
+    const nome = h("input",{type:"text",placeholder:"Como vai aparecer na página"});
+    const slug = h("input",{type:"text",placeholder:"ex: joaosilva",autocapitalize:"none"});
+    const prevSlug = h("div",{class:"hint"});
+    const insta = campoInsta("");
+    const tel = campoTel("");
+    const email = h("input",{type:"email",autocomplete:"email",placeholder:"seu@email.com"});
+    const senha = h("input",{type:"password",autocomplete:"new-password",placeholder:"Mínimo 6 caracteres"});
+    const termos = h("input",{type:"checkbox"});
+    const atualizarPrev = ()=>{
+      const s = normalizarSlug(slug.value);
+      prevSlug.textContent = s ? `Sua página: ${location.host}/${s}` : "Só letras minúsculas, números e hífen.";
+    };
+    nome.addEventListener("input",()=>{ if(!slug.dataset.mexeu){ slug.value = normalizarSlug(nome.value); atualizarPrev(); } });
+    slug.addEventListener("input",()=>{ slug.dataset.mexeu = "1"; atualizarPrev(); });
+    atualizarPrev();
+
+    const bt = h("button",{class:"btn full",text:"Criar minha página",style:"margin-top:14px",onclick:async()=>{
+      aviso("");
+      const s = normalizarSlug(slug.value);
+      if (!nome.value.trim()) return aviso("Preencha o nome.");
+      if (!slugValido(s)) return aviso("Endereço inválido. Use de 2 a 30 caracteres: letras minúsculas, números e hífen.");
+      const ig = normalizarInsta(insta.value);
+      if (!instaValido(ig)) return aviso("Informe o @ do Instagram (ex: @seuinstagram).");
+      if (!telValido(tel.value)) return aviso("Informe o telefone com DDD, ex: (71) 99999-9999.");
+      if (!termos.checked) return aviso("Você precisa aceitar os termos de uso.");
+      bt.disabled = true;
+      const { data:livre, error:e1 } = await sb.rpc("slug_disponivel", { s });
+      if (e1){ bt.disabled=false; return aviso(traduzErro(e1)); }
+      if (!livre){ bt.disabled=false; return aviso("Esse endereço já está em uso. Escolha outro."); }
+      const { data, error } = await sb.auth.signUp({
+        email: email.value.trim(), password: senha.value,
+        options:{ data:{ slug:s, nome:nome.value.trim(), instagram:ig, telefone:mascaraTel(tel.value) }, emailRedirectTo: location.origin + "/admin" }
+      });
+      bt.disabled = false;
+      if (error) return aviso(traduzErro(error));
+      if (data.session) return destino();
+      form.innerHTML = "";
+      aviso("Conta criada! Enviamos um e-mail de confirmação. Toque no link do e-mail e depois entre aqui com seu e-mail e senha.", "ok");
+    }});
+    form.append(
+      h("label",{text:"Nome"}), nome,
+      h("label",{text:"Endereço da página"}), slug, prevSlug,
+      h("label",{text:"Instagram"}), insta,
+      h("label",{text:"Telefone / WhatsApp com DDD"}), tel,
+      h("label",{text:"E-mail"}), email,
+      h("label",{text:"Senha"}), senha,
+      h("label",{class:"check"}, termos, h("span",{}, "Li e aceito os ", h("a",{href:"/termos",target:"_blank",text:"termos de uso"}), ". Sou responsável pelo conteúdo e pelos links da minha página.")),
+      bt
+    );
+  }
+
+  app.append(h("div",{class:"wrap"},
+    h("div",{class:"top"}, h("h2",{text:PLATAFORMA})),
+    h("div",{class:"box"}, h("div",{class:"tabs"}, tabE, tabC), form, msg)
+  ));
+  desenhar();
+}
+
+function telaNovaSenha(){
+  limpar("painel");
+  const senha = h("input",{type:"password",autocomplete:"new-password",placeholder:"Nova senha (mín. 6)"});
+  const msg = h("div");
+  app.append(h("div",{class:"wrap"}, h("div",{class:"box"},
+    h("h3",{text:"Criar nova senha"}), senha,
+    h("button",{class:"btn full",text:"Salvar senha",style:"margin-top:12px",onclick:async()=>{
+      const { error } = await sb.auth.updateUser({ password:senha.value });
+      msg.innerHTML = "";
+      if (error) return msg.append(h("div",{class:"msg erro",text:traduzErro(error)}));
+      toast("Senha alterada!");
+      history.replaceState(null,"","/admin");
+      painelCliente();
+    }}), msg
+  )));
+}
+
+/* =====================================================================
+   PERFIL DO USUÁRIO LOGADO
+   ===================================================================== */
+const COLS_PUBLICAS = "id,slug,nome,bio,avatar_url,fundo_url,cor,links,ativo,aviso_apostas,posicao_links,created_at";
+async function comPrivado(perfil){
+  if (!perfil) return perfil;
+  const { data } = await sb.rpc("meu_privado");
+  const pv = Array.isArray(data) ? data[0] : data;
+  return Object.assign(perfil, { instagram:pv?.instagram || null, telefone:pv?.telefone || null, is_master:!!pv?.is_master });
+}
+async function meuPerfil(user){
+  const { data, error } = await sb.from("profiles").select(COLS_PUBLICAS).eq("id", user.id).maybeSingle();
+  if (error) throw error;
+  if (data) return comPrivado(data);
+  // primeiro acesso: cria o perfil com o que foi escolhido no cadastro
+  const md = user.user_metadata || {};
+  const novo = { id:user.id, slug:md.slug, nome:md.nome || "", instagram:md.instagram || null, telefone:md.telefone || null, termos_aceitos_em:new Date().toISOString() };
+  if (!slugValido(novo.slug || "")) return null;
+  const { error:e2 } = await sb.from("profiles").insert(novo);
+  if (e2){
+    if (/duplicate|slug/i.test(e2.message)) return null;
+    throw e2;
+  }
+  const { data:criado } = await sb.from("profiles").select(COLS_PUBLICAS).eq("id", user.id).single();
+  return comPrivado(criado);
+}
+
+function telaEscolherSlug(user){
+  limpar("painel");
+  const slug = h("input",{type:"text",placeholder:"ex: joaosilva",autocapitalize:"none"});
+  const nome = h("input",{type:"text",value:(user.user_metadata||{}).nome || ""});
+  const msg = h("div");
+  app.append(h("div",{class:"wrap"}, h("div",{class:"box"},
+    h("h3",{text:"Escolha o endereço da sua página"}),
+    h("label",{text:"Nome"}), nome,
+    h("label",{text:"Endereço"}), slug,
+    h("button",{class:"btn full",text:"Continuar",style:"margin-top:12px",onclick:async()=>{
+      msg.innerHTML = "";
+      const s = normalizarSlug(slug.value);
+      if (!slugValido(s)) return msg.append(h("div",{class:"msg erro",text:"Endereço inválido."}));
+      const { error } = await sb.from("profiles").insert({ id:user.id, slug:s, nome:nome.value.trim(), termos_aceitos_em:new Date().toISOString() });
+      if (error) return msg.append(h("div",{class:"msg erro",text:traduzErro(error)}));
+      painelCliente();
+    }}), msg
+  )));
+}
+
+/* =====================================================================
+   PAINEL DO CLIENTE  (/admin)
+   ===================================================================== */
+async function painelCliente(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if (!session) return telaLogin(painelCliente);
+  let p;
+  try{ p = await meuPerfil(session.user); }
+  catch(e){ return erroGeral(traduzErro(e)); }
+  if (!p) return telaEscolherSlug(session.user);
+
+  limpar("painel");
+  document.title = "Minha página — " + PLATAFORMA;
+  const uid = session.user.id;
+  const estado = {
+    nome:p.nome || "", bio:p.bio || "", cor:p.cor || "#344e1c",
+    avatar_url:p.avatar_url, fundo_url:p.fundo_url,
+    links: Array.isArray(p.links) ? p.links.map(l=>({titulo:l.titulo||"", url:l.url||"", icone:l.icone||null})) : []
+  };
+  const urlPagina = `${location.origin}/${p.slug}`;
+
+  // status
+  const status = p.ativo
+    ? h("div",{class:"msg ok"}, "Sua página está no ar: ", h("a",{href:"/"+p.slug,target:"_blank",text:`${location.host}/${p.slug}`}))
+    : h("div",{class:"msg aviso",text:"Sua página ainda não está ativa. Fale com o administrador para liberar. Você já pode ir montando tudo."});
+
+  // dados
+  const inNome = h("input",{type:"text",value:estado.nome,oninput:e=>estado.nome=e.target.value});
+  const inBio = h("textarea",{maxlength:"200",oninput:e=>estado.bio=e.target.value});
+  inBio.value = estado.bio;
+  const inCor = h("input",{type:"color",value:estado.cor,oninput:e=>estado.cor=e.target.value});
+  const inInsta = campoInsta(p.instagram || "");
+  const inTel = campoTel(p.telefone || "");
+  const inAviso = h("input",{type:"checkbox"}); inAviso.checked = p.aviso_apostas !== false;
+  estado.posicao = ["alto","meio","baixo"].includes(p.posicao_links) ? p.posicao_links : "alto";
+  const posBox = h("div",{class:"tabs",style:"margin-bottom:0"});
+  const desenharPos = ()=>{
+    posBox.innerHTML = "";
+    [["alto","No alto"],["meio","No meio"],["baixo","Embaixo"]].forEach(([v,t])=>
+      posBox.append(h("button",{class: estado.posicao===v ? "on" : "", text:t, onclick:()=>{ estado.posicao = v; desenharPos(); }})));
+  };
+  desenharPos();
+
+  // imagens
+  function campoImagem(tipo, titulo, redondo){
+    const prev = h("img",{class:"prev"+(redondo?" round":""),alt:""});
+    if (estado[tipo+"_url"]) prev.src = estado[tipo+"_url"];
+    const file = h("input",{type:"file",accept:"image/*",class:"hidden"});
+    const bt = h("button",{class:"btn sec peq",text:"Trocar foto",onclick:()=>file.click()});
+    const rm = h("button",{class:"btn sec peq",text:"Remover",onclick:()=>{ estado[tipo+"_url"]=null; prev.removeAttribute("src"); }});
+    file.addEventListener("change", async ()=>{
+      const f = file.files[0]; if (!f) return;
+      bt.disabled = true; bt.textContent = "Enviando…";
+      try{
+        const url = await enviarImagem(uid, tipo, f);
+        estado[tipo+"_url"] = url; prev.src = url;
+        toast("Foto enviada. Toque em Salvar.");
+      }catch(e){ toast(traduzErro(e)); }
+      bt.disabled = false; bt.textContent = "Trocar foto"; file.value = "";
+    });
+    return h("div",{}, h("label",{text:titulo}), h("div",{class:"imgrow"}, prev, h("div",{style:"display:flex;gap:6px;flex-wrap:wrap"}, bt, rm), file));
+  }
+
+  // links
+  const listaLinks = h("div");
+  function desenharLinks(){
+    listaLinks.innerHTML = "";
+    if (!estado.links.length) listaLinks.append(h("p",{class:"hint",text:"Nenhum botão ainda."}));
+    estado.links.forEach((l, i)=>{
+      const t = h("input",{type:"text",placeholder:"Texto do botão",value:l.titulo,oninput:e=>l.titulo=e.target.value});
+      const u = h("input",{type:"url",placeholder:"https://…",value:l.url,autocapitalize:"none",oninput:e=>l.url=e.target.value});
+      const mover = (d)=>{ const j=i+d; if(j<0||j>=estado.links.length) return; [estado.links[i],estado.links[j]]=[estado.links[j],estado.links[i]]; desenharLinks(); };
+      const ic = h("img",{class:"prev mini",alt:""}); if (l.icone) ic.src = l.icone;
+      const fileIc = h("input",{type:"file",accept:"image/*",class:"hidden"});
+      const btIc = h("button",{class:"btn sec peq",text:l.icone ? "Trocar foto" : "Pôr foto",onclick:()=>fileIc.click()});
+      fileIc.addEventListener("change", async ()=>{
+        const f = fileIc.files[0]; if (!f) return;
+        btIc.disabled = true; btIc.textContent = "Enviando…";
+        try{ l.icone = await enviarImagem(uid, "icone", f); toast("Foto enviada. Toque em Salvar."); desenharLinks(); }
+        catch(e){ toast(traduzErro(e)); btIc.disabled = false; btIc.textContent = "Pôr foto"; }
+      });
+      const rmIc = l.icone ? h("button",{class:"btn sec peq",text:"Tirar",onclick:()=>{ l.icone = null; desenharLinks(); }}) : null;
+      listaLinks.append(h("div",{class:"linkrow"}, t, u, h("div",{class:"linkacts"},
+        ic, btIc, rmIc, fileIc, h("span",{style:"flex:1"}),
+        h("button",{class:"btn sec peq",text:"↑",onclick:()=>mover(-1)}),
+        h("button",{class:"btn sec peq",text:"↓",onclick:()=>mover(1)}),
+        h("button",{class:"btn verm peq",text:"Excluir",onclick:()=>{ estado.links.splice(i,1); desenharLinks(); }})
+      )));
+    });
+  }
+  desenharLinks();
+  const addLink = h("button",{class:"btn sec full",text:"+ Adicionar botão",onclick:()=>{
+    if (estado.links.length >= 20) return toast("Máximo de 20 botões.");
+    estado.links.push({titulo:"",url:"",icone:null}); desenharLinks();
+  }});
+
+  // salvar
+  const btSalvar = h("button",{class:"btn verde full",text:"Salvar alterações",onclick:async()=>{
+    const links = estado.links
+      .map(l=>({ titulo:l.titulo.trim(), url:normalizarUrl(l.url), icone:l.icone || null }))
+      .filter(l=>l.url);
+    if (links.some(l=>safeUrl(l.url)==="#")) return toast("Tem um link inválido. Confira os endereços.");
+    const igN = normalizarInsta(inInsta.value);
+    if (!instaValido(igN)) return toast("Informe o @ do Instagram.");
+    if (!telValido(inTel.value)) return toast("Informe o telefone com DDD.");
+    if (!inAviso.checked && links.some(l=>/bet|cassino|casino|aposta/i.test(dominioDe(l.url))) &&
+        !confirm("Sua página tem link de apostas. Sem o aviso +18 você fica fora da regra de publicidade. Desligar mesmo assim?")) return;
+    btSalvar.disabled = true; btSalvar.textContent = "Salvando…";
+    const { error } = await sb.from("profiles").update({
+      nome:estado.nome.trim(), bio:estado.bio.trim(), cor:estado.cor,
+      avatar_url:estado.avatar_url, fundo_url:estado.fundo_url, links,
+      instagram:igN, telefone:mascaraTel(inTel.value), aviso_apostas:inAviso.checked, posicao_links:estado.posicao
+    }).eq("id", uid);
+    btSalvar.disabled = false; btSalvar.textContent = "Salvar alterações";
+    if (error) return toast(traduzErro(error));
+    estado.links = links; desenharLinks();
+    toast("Salvo! Sua página já está atualizada.");
+  }});
+
+  // estatísticas
+  const boxStats = h("div",{class:"box"}, h("h3",{text:"Cliques nos últimos 30 dias"}), h("p",{class:"hint",text:"Carregando…"}));
+  carregarStats(uid, boxStats);
+
+  app.append(h("div",{class:"wrap"},
+    h("div",{class:"top"},
+      h("h2",{text:"Minha página"}),
+      h("div",{style:"display:flex;gap:6px"},
+        h("a",{class:"btn sec peq",href:"/"+p.slug,target:"_blank",text:"Ver página"}),
+        h("button",{class:"btn sec peq",text:"Sair",onclick:async()=>{ await sb.auth.signOut(); location.href="/admin"; }})
+      )
+    ),
+    status,
+    h("div",{class:"box",style:"margin-top:14px"},
+      h("h3",{text:"Perfil"}),
+      h("label",{text:"Nome"}), inNome,
+      h("label",{text:"Frase / bio"}), inBio,
+      h("label",{text:"Cor dos botões"}), h("div",{class:"colorrow"}, inCor, h("span",{class:"hint",text:"Toque para escolher"})),
+      h("label",{text:"Instagram"}), inInsta,
+      h("label",{text:"Telefone / WhatsApp com DDD"}), inTel,
+      h("label",{text:"Altura dos botões na página"}), posBox,
+      h("p",{class:"hint",text:"Use \"No meio\" ou \"Embaixo\" se os botões estiverem cobrindo o rosto na foto de fundo."}),
+      h("label",{class:"check",style:"margin-top:14px"}, inAviso,
+        h("span",{}, h("b",{text:"Mostrar aviso +18, jogo responsável e selo de casas autorizadas"}),
+          " no rodapé da página. Se a sua página divulga apostas, deixe ligado: o aviso +18 é obrigatório na publicidade de apostas.")),
+      h("p",{class:"hint",text:"Instagram e telefone não aparecem na página, são só para contato."})
+    ),
+    h("div",{class:"box"},
+      h("h3",{text:"Fotos"}),
+      campoImagem("avatar","Foto do perfil (redonda)",true),
+      campoImagem("fundo","Foto de fundo",false)
+    ),
+    h("div",{class:"box"}, h("h3",{text:"Botões / links"}), listaLinks, addLink),
+    boxStats,
+    h("div",{class:"box"},
+      h("h3",{text:"Seu link para a bio"}),
+      h("input",{type:"text",value:urlPagina,readonly:true,onclick:e=>e.target.select()}),
+      h("button",{class:"btn sec full",text:"Copiar link",style:"margin-top:8px",onclick:()=>{
+        navigator.clipboard?.writeText(urlPagina).then(()=>toast("Link copiado!"),()=>toast("Segure no campo para copiar."));
+      }})
+    ),
+    h("div",{class:"sticky"}, btSalvar)
+  ));
+}
+
+async function carregarStats(uid, box){
+  const desde = new Date(Date.now() - 30*864e5).toISOString();
+  const { data, error } = await sb.from("cliques").select("url,created_at")
+    .eq("profile_id", uid).gte("created_at", desde).limit(10000);
+  box.lastChild.remove();
+  if (error) return box.append(h("p",{class:"hint",text:"Não foi possível carregar."}));
+  if (!data.length) return box.append(h("p",{class:"hint",text:"Nenhum clique ainda."}));
+  const porUrl = {};
+  data.forEach(c=>{ porUrl[c.url] = (porUrl[c.url]||0) + 1; });
+  const hoje = new Date().toDateString();
+  const nHoje = data.filter(c=>new Date(c.created_at).toDateString()===hoje).length;
+  box.append(h("div",{class:"kpis"},
+    h("div",{class:"kpi",style:"background:#f9fafb"}, h("b",{text:String(data.length)}), h("span",{text:"30 dias"})),
+    h("div",{class:"kpi",style:"background:#f9fafb"}, h("b",{text:String(nHoje)}), h("span",{text:"hoje"}))
+  ));
+  Object.entries(porUrl).sort((a,b)=>b[1]-a[1]).forEach(([u,n])=>{
+    box.append(h("div",{class:"stat"}, h("span",{text:u.replace(/^https?:\/\//,"")}), h("b",{text:String(n)})));
+  });
+}
+
+/* =====================================================================
+   PAINEL MASTER  (/master)
+   ===================================================================== */
+async function painelMaster(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if (!session) return telaLogin(painelMaster);
+  const { data:souMaster } = await sb.rpc("is_master");
+  if (!souMaster) return erroGeral("Acesso restrito ao administrador.");
+
+  limpar("painel");
+  document.title = "Master — " + PLATAFORMA;
+  const busca = h("input",{type:"search",placeholder:"Buscar por nome, endereço ou e-mail"});
+  const lista = h("div");
+  const kpis = h("div",{class:"kpis"});
+  let todos = [];
+
+  async function carregar(){
+    const { data, error } = await sb.rpc("master_lista");
+    if (error) return toast(traduzErro(error));
+    todos = data || [];
+    desenhar();
+  }
+  function desenhar(){
+    const q = busca.value.trim().toLowerCase();
+    const vis = todos.filter(c=>!q || [c.nome,c.slug,c.email,c.instagram,c.telefone].some(x=>(x||"").toLowerCase().includes(q)));
+    kpis.innerHTML = "";
+    kpis.append(
+      h("div",{class:"kpi"}, h("b",{text:String(todos.length)}), h("span",{text:"clientes"})),
+      h("div",{class:"kpi"}, h("b",{text:String(todos.filter(c=>c.ativo).length)}), h("span",{text:"ativos"})),
+      h("div",{class:"kpi"}, h("b",{text:String(todos.reduce((s,c)=>s+Number(c.cliques_30d||0),0))}), h("span",{text:"cliques 30d"}))
+    );
+    lista.innerHTML = "";
+    if (!vis.length) lista.append(h("p",{class:"hint",text:"Nenhum cliente."}));
+    vis.forEach(c=>{
+      const bt = h("button",{
+        class:"btn peq " + (c.ativo ? "verm" : "verde"),
+        text: c.ativo ? "Bloquear" : "Ativar",
+        onclick: async()=>{
+          if (c.ativo && !confirm(`Bloquear a página de ${c.nome || c.slug}? Ela sai do ar na hora.`)) return;
+          bt.disabled = true;
+          const { error } = await sb.rpc("master_set_ativo", { p_id:c.id, p_ativo:!c.ativo });
+          if (error){ bt.disabled = false; return toast(traduzErro(error)); }
+          c.ativo = !c.ativo; desenhar();
+          toast(c.ativo ? "Página ativada." : "Página bloqueada.");
+        }
+      });
+      lista.append(h("div",{class:"cli"},
+        h("div",{class:"l1"},
+          h("div",{}, h("div",{class:"nm",text:c.nome || "(sem nome)"}),
+            h("a",{href:"/"+c.slug,target:"_blank",text:"/"+c.slug,style:"font-size:13px"})),
+          h("span",{class:"badge "+(c.ativo?"on":"off"),text:c.ativo?"ATIVO":"BLOQUEADO"})
+        ),
+        h("div",{class:"meta",text:`${c.email} · desde ${dataBR(c.created_at)} · ${c.cliques_30d} cliques/30d`}),
+        h("div",{class:"meta"},
+          c.instagram ? h("a",{href:"https://instagram.com/"+c.instagram,target:"_blank",rel:"noopener",text:"@"+c.instagram}) : "sem Instagram",
+          " · ",
+          c.telefone ? h("a",{href:"https://wa.me/55"+c.telefone.replace(/\D/g,""),target:"_blank",rel:"noopener",text:c.telefone}) : "sem telefone"
+        ),
+        h("div",{style:"margin-top:8px;display:flex;justify-content:flex-end;gap:6px"},
+          h("button",{class:"btn sec peq",text:"Ver detalhes",onclick:()=>detalheCliente(c)}), bt)
+      ));
+    });
+  }
+  busca.addEventListener("input", desenhar);
+
+  app.append(h("div",{class:"wrap"},
+    h("div",{class:"top"},
+      h("h2",{text:"Painel master"}),
+      h("div",{style:"display:flex;gap:6px"},
+        h("button",{class:"btn sec peq",text:"Atualizar",onclick:carregar}),
+        h("a",{class:"btn sec peq",href:"/admin",text:"Minha página"})
+      )
+    ),
+    kpis,
+    h("div",{class:"box"}, busca, h("div",{style:"margin-top:12px"}, lista))
+  ));
+  carregar();
+}
+
+
+/* ---------- MASTER: detalhes de um cliente (links e cliques) ---------- */
+async function detalheCliente(c){
+  limpar("painel");
+  document.title = (c.nome || c.slug) + " — Master";
+  const wrap = h("div",{class:"wrap"});
+  app.append(wrap);
+  wrap.append(h("div",{class:"top"},
+    h("h2",{text:c.nome || c.slug}),
+    h("div",{style:"display:flex;gap:6px"},
+      h("a",{class:"btn sec peq",href:"/"+c.slug,target:"_blank",text:"Ver página"}),
+      h("button",{class:"btn sec peq",text:"← Voltar",onclick:painelMaster})
+    )
+  ));
+  wrap.append(h("div",{class:"meta",style:"margin-bottom:12px;color:#6b7280;font-size:13px",
+    text:`${location.host}/${c.slug} · ${c.email} · ${c.ativo ? "ATIVO" : "BLOQUEADO"} · desde ${dataBR(c.created_at)}`}));
+  wrap.append(h("div",{style:"display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"},
+    c.instagram ? h("a",{class:"btn sec peq",href:"https://instagram.com/"+c.instagram,target:"_blank",rel:"noopener",text:"Instagram @"+c.instagram}) : null,
+    c.telefone ? h("a",{class:"btn verde peq",href:"https://wa.me/55"+c.telefone.replace(/\D/g,""),target:"_blank",rel:"noopener",text:"WhatsApp "+c.telefone}) : null
+  ));
+
+  const [{ data:p, error:e1 }, { data:cl, error:e2 }] = await Promise.all([
+    sb.from("profiles").select(COLS_PUBLICAS).eq("id", c.id).maybeSingle(),
+    sb.from("cliques").select("url,link_idx,utm_source,created_at").eq("profile_id", c.id)
+      .gte("created_at", new Date(Date.now() - 90*864e5).toISOString())
+      .order("created_at", { ascending:false }).limit(20000)
+  ]);
+  if (e1 || !p) return wrap.append(h("div",{class:"msg erro",text:"Não foi possível carregar este cliente."}));
+  const cliques = e2 ? [] : (cl || []);
+  const dias = n => Date.now() - n*864e5;
+  const conta = (arr, n) => arr.filter(x=>new Date(x.created_at).getTime() >= dias(n)).length;
+  const hoje = new Date().toDateString();
+
+  // resumo
+  wrap.append(h("div",{class:"kpis"},
+    h("div",{class:"kpi"}, h("b",{text:String(cliques.filter(x=>new Date(x.created_at).toDateString()===hoje).length)}), h("span",{text:"hoje"})),
+    h("div",{class:"kpi"}, h("b",{text:String(conta(cliques,7))}), h("span",{text:"7 dias"})),
+    h("div",{class:"kpi"}, h("b",{text:String(conta(cliques,30))}), h("span",{text:"30 dias"})),
+    h("div",{class:"kpi"}, h("b",{text:String(cliques.length)}), h("span",{text:"90 dias"}))
+  ));
+
+  // links publicados agora
+  const links = Array.isArray(p.links) ? p.links : [];
+  const boxL = h("div",{class:"box"}, h("h3",{text:`Links publicados agora (${links.length})`}));
+  if (!links.length) boxL.append(h("p",{class:"hint",text:"Nenhum link."}));
+  links.forEach(l=>{
+    const n30 = cliques.filter(x=>x.url===l.url && new Date(x.created_at).getTime() >= dias(30)).length;
+    boxL.append(h("div",{class:"cli"},
+      h("div",{class:"l1"},
+        h("div",{class:"nm",text:l.titulo || "(sem título)"}),
+        h("b",{text:`${n30} cliques/30d`,style:"font-size:13px"})
+      ),
+      h("div",{class:"meta"}, h("a",{href:l.url,target:"_blank",rel:"noopener noreferrer",text:l.url})),
+      suspeitoAposta(l.url) ? h("div",{class:"msg aviso",style:"margin-top:6px;font-size:12px",
+        text:"Parece site de aposta fora do domínio .bet.br (casas autorizadas no Brasil usam .bet.br). Confira."}) : null
+    ));
+  });
+  wrap.append(boxL);
+
+  // cliques por destino (inclui links que já foram removidos)
+  const porUrl = {};
+  cliques.forEach(x=>{ porUrl[x.url] = (porUrl[x.url]||0) + 1; });
+  const boxU = h("div",{class:"box"}, h("h3",{text:"Cliques por destino (90 dias)"}));
+  const atuais = new Set(links.map(l=>l.url));
+  const ent = Object.entries(porUrl).sort((a,b)=>b[1]-a[1]);
+  if (!ent.length) boxU.append(h("p",{class:"hint",text:"Nenhum clique ainda."}));
+  ent.forEach(([u,n])=> boxU.append(h("div",{class:"stat"},
+    h("span",{text:(atuais.has(u) ? "" : "(removido) ") + u.replace(/^https?:\/\//,"")}), h("b",{text:String(n)}))));
+  wrap.append(boxU);
+
+  // origem (utm_source)
+  const porOrigem = {};
+  cliques.forEach(x=>{ const k = x.utm_source || "(sem origem)"; porOrigem[k] = (porOrigem[k]||0) + 1; });
+  const boxO = h("div",{class:"box"}, h("h3",{text:"De onde vieram (utm_source)"}));
+  Object.entries(porOrigem).sort((a,b)=>b[1]-a[1]).forEach(([k,n])=>
+    boxO.append(h("div",{class:"stat"}, h("span",{text:k}), h("b",{text:String(n)}))));
+  if (!cliques.length) boxO.append(h("p",{class:"hint",text:"—"}));
+  wrap.append(boxO);
+
+  // últimos cliques
+  const boxR = h("div",{class:"box"}, h("h3",{text:"Últimos cliques"}));
+  cliques.slice(0,30).forEach(x=> boxR.append(h("div",{class:"stat"},
+    h("span",{text:dominioDe(x.url) + (x.utm_source ? " · " + x.utm_source : "")}),
+    h("span",{style:"color:#6b7280;font-size:12px;white-space:nowrap",
+      text:new Date(x.created_at).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}))));
+  if (!cliques.length) boxR.append(h("p",{class:"hint",text:"—"}));
+  wrap.append(boxR);
+}
+
+/* =====================================================================
+   ERROS E INÍCIO
+   ===================================================================== */
+function erroGeral(t){
+  limpar("painel");
+  app.append(h("div",{class:"centro"},
+    h("h2",{text:"Ops"}), h("p",{text:t}),
+    h("button",{class:"btn sec",text:"Sair da conta",onclick:async()=>{ await sb.auth.signOut(); location.href="/admin"; }})
+  ));
+}
+
+function iniciar(){
+  if (!CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY || !window.supabase){
+    limpar("painel");
+    app.append(h("div",{class:"centro"},
+      h("h2",{text:"Configuração pendente"}),
+      h("p",{text:"Preencha SUPABASE_URL e SUPABASE_ANON_KEY no arquivo config.js."})
+    ));
+    return;
+  }
+  CFG.SUPABASE_URL = CFG.SUPABASE_URL.trim().replace(/\/rest\/v1\/?$/,"").replace(/\/+$/,"");
+  CFG.SUPABASE_ANON_KEY = CFG.SUPABASE_ANON_KEY.trim();
+  sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+
+  let recuperando = false;
+  sb.auth.onAuthStateChange((evento)=>{
+    if (evento === "PASSWORD_RECOVERY"){ recuperando = true; telaNovaSenha(); }
+  });
+
+  const seg = (location.pathname.split("/")[1] || "").toLowerCase();
+  const rotear = ()=>{
+    if (recuperando) return;
+    if (seg === "") return paginaInicial();
+    if (seg === "admin") return painelCliente();
+    if (seg === "master") return painelMaster();
+    if (seg === "termos") return paginaTermos();
+    return paginaPublica(decodeURIComponent(seg));
+  };
+  // dá tempo do Supabase ler o link de confirmação/recuperação vindo do e-mail
+  if (/access_token|type=recovery|code=/.test(location.hash + location.search)) setTimeout(rotear, 600);
+  else rotear();
+}
+iniciar();
+</script>
+</body>
+</html>
