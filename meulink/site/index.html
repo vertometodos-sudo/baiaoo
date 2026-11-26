@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0f1a0f">
 <title>MeuLink</title>
 <script src="/config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{min-height:100%}
@@ -84,6 +84,7 @@ input:focus,textarea:focus{outline:2px solid #2563eb;border-color:transparent}
 .sticky{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(243,244,246,.95);border-top:1px solid #e5e7eb}
 .sticky .btn{max-width:528px;margin:0 auto;display:flex}
 .stat{display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-bottom:1px solid #f3f4f6}
+.stat span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:10px}.stat b{flex-shrink:0}
 .stat span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:10px}
 .cli{border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:10px}
 .cli .l1{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -92,9 +93,9 @@ input:focus,textarea:focus{outline:2px solid #2563eb;border-color:transparent}
 .badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px}
 .badge.on{background:#dcfce7;color:#166534}
 .badge.off{background:#fee2e2;color:#991b1b}
-.kpis{display:flex;gap:10px;margin-bottom:14px}
-.kpi{flex:1;background:#fff;border-radius:12px;padding:12px;text-align:center}
-.kpi b{display:block;font-size:22px}
+.kpis{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.kpi{flex:1 1 70px;min-width:0;background:#fff;border-radius:12px;padding:12px 6px;text-align:center}
+.kpi b{display:block;font-size:20px;white-space:nowrap}
 .kpi span{font-size:12px;color:#6b7280}
 .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.2)}
 .centro{min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:20px}
@@ -152,8 +153,43 @@ function safeUrl(u){
 function normalizarUrl(u){
   u = (u || "").trim();
   if (!u) return "";
-  if (/^(https?:|mailto:|tel:)/i.test(u)) return u;
-  return "https://" + u;
+  if (!/^(https?:|mailto:|tel:)/i.test(u)) u = "https://" + u;
+  // tira lixo de rastreio colado junto (fbclid, utm_…, igsh) para não "grudar" no link salvo
+  try{
+    const x = new URL(u);
+    if (/^https?:$/.test(x.protocol)){
+      [...x.searchParams.keys()].forEach(k=>{ if (/^(fbclid|gclid|igsh|igshid|utm_.+)$/i.test(k)) x.searchParams.delete(k); });
+      return x.toString();
+    }
+  }catch{}
+  return u;
+}
+/* origem do tráfego: ?utm_source=… ou, sem isso, o site de onde a pessoa veio */
+function origemVisita(params){
+  const utm = (params.get("utm_source") || "").trim().toLowerCase();
+  if (utm) return utm.slice(0,40);
+  const ua = navigator.userAgent || "";
+  if (/Instagram/i.test(ua)) return "instagram";
+  if (/FBAN|FBAV|FB_IAB/i.test(ua)) return "facebook";
+  if (/musical_ly|TikTok|BytedanceWebview/i.test(ua)) return "tiktok";
+  let ref = ""; try{ ref = document.referrer ? new URL(document.referrer).hostname.replace(/^www\./,"") : ""; }catch{}
+  if (!ref || ref === location.hostname) return null;
+  const mapa = [["instagram","instagram"],["facebook","facebook"],["fb.","facebook"],["tiktok","tiktok"],["whatsapp","whatsapp"],["wa.me","whatsapp"],
+                ["youtube","youtube"],["youtu.be","youtube"],["t.co","twitter"],["twitter","twitter"],["x.com","twitter"],["google","google"],["t.me","telegram"],["telegram","telegram"],["kwai","kwai"]];
+  const m = mapa.find(([k])=>ref.includes(k));
+  return m ? m[1] : ref.slice(0,40);
+}
+function apiPost(tabela, corpo){
+  try{
+    fetch(`${CFG.SUPABASE_URL}/rest/v1/${tabela}`, {
+      method:"POST", keepalive:true,
+      headers: Object.assign(
+        { apikey:CFG.SUPABASE_ANON_KEY, "Content-Type":"application/json", Prefer:"return=minimal" },
+        CFG.SUPABASE_ANON_KEY.startsWith("eyJ") ? { Authorization:"Bearer " + CFG.SUPABASE_ANON_KEY } : {}
+      ),
+      body:JSON.stringify(corpo)
+    }).catch(()=>{});
+  }catch{}
 }
 function normalizarSlug(s){
   return (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"")
@@ -211,6 +247,10 @@ function blocoAvisos(links, escuro){
     )
   );
 }
+function linkWhatsAdmin(texto){
+  const n = (CFG.WHATSAPP_CONTATO || "").replace(/\D/g,"");
+  return n ? `https://wa.me/${n}${texto ? "?text=" + encodeURIComponent(texto) : ""}` : null;
+}
 function dataBR(d){ return new Date(d).toLocaleDateString("pt-BR"); }
 function svgSeta(){
   const s = document.createElementNS("http://www.w3.org/2000/svg","svg");
@@ -265,6 +305,8 @@ async function paginaPublica(slug){
   limpar("pub");
   document.title = data.nome || data.slug;
   const entrada = new URLSearchParams(location.search);
+  const origem = origemVisita(entrada);
+  apiPost("visitas", { profile_id:data.id, utm_source:origem });
   const repassar = (url)=>{
     try{
       const u = new URL(url);
@@ -287,7 +329,7 @@ async function paginaPublica(slug){
     lista.append(h("a",{
         class:"card", href:destino, rel:"noopener",
         style:`background:${/^#[0-9a-fA-F]{6}$/.test(data.cor) ? data.cor : "#344e1c"}ee`,
-        onclick:()=>registrarClique(data.id, i, url, entrada.get("utm_source"))
+        onclick:()=>registrarClique(data.id, i, url, origem)
       },
       (l.icone && safeUrl(l.icone) !== "#")
         ? h("img",{class:"icon",src:l.icone,alt:"",style:"object-fit:cover"})
@@ -300,8 +342,7 @@ async function paginaPublica(slug){
     ));
   });
 
-  const av = h("img",{class:"avatar",alt:""});
-  if (data.avatar_url) av.src = data.avatar_url;
+  const av = data.avatar_url ? h("img",{class:"avatar",alt:data.nome || "",src:data.avatar_url}) : null;
 
   const pos = ["alto","meio","baixo"].includes(data.posicao_links) ? data.posicao_links : "alto";
   app.append(bg, h("main",{class:"pubmain pos-" + pos},
@@ -316,21 +357,13 @@ async function paginaPublica(slug){
 }
 
 function registrarClique(profileId, idx, url, utm){
-  try{
-    fetch(`${CFG.SUPABASE_URL}/rest/v1/cliques`, {
-      method:"POST", keepalive:true,
-      headers: Object.assign(
-        { apikey:CFG.SUPABASE_ANON_KEY, "Content-Type":"application/json", Prefer:"return=minimal" },
-        CFG.SUPABASE_ANON_KEY.startsWith("eyJ") ? { Authorization:"Bearer " + CFG.SUPABASE_ANON_KEY } : {}
-      ),
-      body:JSON.stringify({ profile_id:profileId, link_idx:idx, url, utm_source:utm || null })
-    }).catch(()=>{});
-  }catch{}
+  apiPost("cliques", { profile_id:profileId, link_idx:idx, url, utm_source:utm || null });
 }
 
 function naoEncontrada(){
   limpar("painel");
   document.title = "Página não encontrada";
+  document.head.append(h("meta",{name:"robots",content:"noindex"}));
   app.append(h("div",{class:"centro"},
     h("h2",{text:"Página não encontrada"}),
     h("p",{text:"Esse endereço não existe ou está indisponível no momento."}),
@@ -344,11 +377,20 @@ function naoEncontrada(){
 function paginaInicial(){
   limpar("painel");
   document.title = PLATAFORMA;
+  const passo = (n, t, d)=>h("div",{style:"display:flex;gap:12px;align-items:flex-start;text-align:left"},
+    h("b",{text:String(n),style:"flex-shrink:0;width:28px;height:28px;border-radius:50%;background:#111827;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px"}),
+    h("div",{}, h("div",{text:t,style:"font-weight:600"}), h("div",{text:d,style:"font-size:14px;color:#4b5563"})));
+  const whats = linkWhatsAdmin("Oi! Quero criar minha página no " + PLATAFORMA);
   app.append(h("div",{class:"centro"},
     h("h1",{text:PLATAFORMA,style:"font-size:32px"}),
     h("p",{text:"Sua página de links, com seu nome, sua foto e seus botões. Você mesmo edita pelo celular.",style:"max-width:340px;color:#4b5563"}),
+    h("div",{style:"max-width:360px;width:100%;display:flex;flex-direction:column;gap:14px;margin:6px 0"},
+      passo(1, "Crie sua página", `Escolha seu endereço: ${location.host}/seunome`),
+      passo(2, "Coloque na bio", "Cole o link na bio do Instagram, TikTok ou no story."),
+      passo(3, "Veja os resultados", "Quantas pessoas visitaram, quantas clicaram e de qual rede vieram.")
+    ),
     h("a",{class:"btn",href:"/admin",text:"Entrar / Criar minha página"}),
-    CFG.WHATSAPP_CONTATO ? h("a",{class:"btn sec",href:`https://wa.me/${CFG.WHATSAPP_CONTATO.replace(/\D/g,"")}`,text:"Falar no WhatsApp"}) : null,
+    whats ? h("a",{class:"btn sec",href:whats,text:"Falar no WhatsApp"}) : null,
     h("a",{href:"/termos",text:"Termos de uso",style:"font-size:13px;color:#6b7280"}),
     h("div",{style:"max-width:420px;width:100%"}, blocoAvisos([], false))
   ));
@@ -368,7 +410,8 @@ function paginaTermos(){
         h("li",{text:"É proibido publicar ou direcionar para conteúdo ilegal, incluindo: casas de apostas ou jogos de azar sem autorização da Secretaria de Prêmios e Apostas do Ministério da Fazenda; golpes, pirâmides ou promessas de ganho garantido; pirataria; conteúdo sexual envolvendo menores; venda de produtos proibidos; uso de imagem de terceiros sem autorização."}),
         h("li",{text:"O titular declara ter direito de uso sobre as imagens que enviar."}),
         h("li",{text:"A plataforma pode suspender ou remover qualquer página, sem aviso prévio, em caso de violação destes termos, denúncia, ordem judicial ou falta de pagamento."}),
-        h("li",{text:"A plataforma registra cliques nos links (data, link clicado e origem da campanha) para fornecer estatísticas ao titular. Não registramos dados pessoais de quem visita."}),
+        h("li",{text:"A plataforma registra visitas e cliques (data, link clicado e de qual rede social a pessoa veio) para fornecer estatísticas ao titular. Para não contar a mesma pessoa duas vezes, guardamos um código embaralhado que muda todo dia e não permite descobrir quem visitou. Não guardamos IP, nome nem contato de quem visita."}),
+        h("li",{text:"Dados do titular: guardamos e-mail, nome, Instagram e telefone informados no cadastro, usados só para login, contato e liberação da página. Não vendemos nem repassamos esses dados. Para corrigir ou apagar seus dados e sua página, fale com o administrador."}),
         h("li",{text:"Estes termos podem ser atualizados. O uso continuado da página significa concordância com a versão vigente."})
       ),
       h("a",{class:"btn sec",href:"/admin",text:"Voltar"})
@@ -562,7 +605,10 @@ async function painelCliente(){
   // status
   const status = p.ativo
     ? h("div",{class:"msg ok"}, "Sua página está no ar: ", h("a",{href:"/"+p.slug,target:"_blank",text:`${location.host}/${p.slug}`}))
-    : h("div",{class:"msg aviso",text:"Sua página ainda não está ativa. Fale com o administrador para liberar. Você já pode ir montando tudo."});
+    : h("div",{class:"msg aviso"}, "Sua página ainda não está ativa. Ela é liberada pelo administrador. Você já pode ir montando tudo.",
+        linkWhatsAdmin(`Oi! Criei minha página ${location.host}/${p.slug} e quero ativar.`)
+          ? h("div",{style:"margin-top:8px"}, h("a",{class:"btn verde peq",href:linkWhatsAdmin(`Oi! Criei minha página ${location.host}/${p.slug} e quero ativar.`),target:"_blank",rel:"noopener",text:"Pedir liberação no WhatsApp"}))
+          : null);
 
   // dados
   const inNome = h("input",{type:"text",value:estado.nome,oninput:e=>estado.nome=e.target.value});
@@ -658,7 +704,7 @@ async function painelCliente(){
   }});
 
   // estatísticas
-  const boxStats = h("div",{class:"box"}, h("h3",{text:"Cliques nos últimos 30 dias"}), h("p",{class:"hint",text:"Carregando…"}));
+  const boxStats = h("div",{class:"box"}, h("h3",{text:"Resultados dos últimos 30 dias"}), h("p",{class:"hint",text:"Carregando…"}));
   carregarStats(uid, boxStats);
 
   app.append(h("div",{class:"wrap"},
@@ -703,23 +749,38 @@ async function painelCliente(){
 }
 
 async function carregarStats(uid, box){
-  const desde = new Date(Date.now() - 30*864e5).toISOString();
-  const { data, error } = await sb.from("cliques").select("url,created_at")
-    .eq("profile_id", uid).gte("created_at", desde).limit(10000);
+  const { data:st, error } = await sb.rpc("stats_perfil", { p_id:uid, p_dias:30 });
   box.lastChild.remove();
-  if (error) return box.append(h("p",{class:"hint",text:"Não foi possível carregar."}));
-  if (!data.length) return box.append(h("p",{class:"hint",text:"Nenhum clique ainda."}));
-  const porUrl = {};
-  data.forEach(c=>{ porUrl[c.url] = (porUrl[c.url]||0) + 1; });
-  const hoje = new Date().toDateString();
-  const nHoje = data.filter(c=>new Date(c.created_at).toDateString()===hoje).length;
+  if (error || !st) return box.append(h("p",{class:"hint",text:"Não foi possível carregar."}));
+  desenharStats(box, st, { links:true });
+}
+function pct(a, b){ return b ? Math.round(a * 100 / b) + "%" : "—"; }
+function desenharStats(box, st, op){
+  const kpi = (v, t)=>h("div",{class:"kpi",style:"background:#f9fafb"}, h("b",{text:String(v)}), h("span",{text:t}));
   box.append(h("div",{class:"kpis"},
-    h("div",{class:"kpi",style:"background:#f9fafb"}, h("b",{text:String(data.length)}), h("span",{text:"30 dias"})),
-    h("div",{class:"kpi",style:"background:#f9fafb"}, h("b",{text:String(nHoje)}), h("span",{text:"hoje"}))
+    kpi(st.visitas, "visitas"), kpi(st.cliques, "cliques"), kpi(pct(st.cliques, st.visitas), "clicaram"),
+    kpi(st.visitas_hoje + " / " + st.cliques_hoje, "hoje (vis./cliq.)")
   ));
-  Object.entries(porUrl).sort((a,b)=>b[1]-a[1]).forEach(([u,n])=>{
-    box.append(h("div",{class:"stat"}, h("span",{text:u.replace(/^https?:\/\//,"")}), h("b",{text:String(n)})));
-  });
+  if (!st.visitas && !st.cliques) return box.append(h("p",{class:"hint",text:"Nada ainda. Coloque o link na bio e volte aqui."}));
+  const dias = st.por_dia || [];
+  const max = Math.max(1, ...dias.map(d=>Math.max(d.visitas, d.cliques)));
+  box.append(h("label",{text:"Últimos 14 dias"}),
+    h("div",{style:"display:flex;align-items:flex-end;gap:3px;height:70px;margin:4px 0 2px"},
+      dias.map(d=>h("div",{title:`${d.dia.split("-").reverse().slice(0,2).join("/")}: ${d.visitas} visitas, ${d.cliques} cliques`,
+        style:"flex:1;display:flex;align-items:flex-end;gap:1px;height:100%"},
+        h("div",{style:`flex:1;background:#9ca3af;border-radius:3px 3px 0 0;height:${Math.max(2, d.visitas*100/max)}%`}),
+        h("div",{style:`flex:1;background:#16a34a;border-radius:3px 3px 0 0;height:${Math.max(2, d.cliques*100/max)}%`})))),
+    h("p",{class:"hint",text:"Cinza: visitas · Verde: cliques"}));
+  if (op && op.links && st.por_link.length){
+    box.append(h("label",{text:"Cliques por botão"}));
+    st.por_link.forEach(l=>box.append(h("div",{class:"stat"}, h("span",{text:(l.url||"").replace(/^https?:\/\//,"")}), h("b",{text:String(l.n)}))));
+  }
+  if (st.por_origem.length){
+    box.append(h("label",{text:"De onde vieram"}));
+    st.por_origem.forEach(o=>box.append(h("div",{class:"stat"},
+      h("span",{text:o.origem}), h("b",{text:`${o.visitas} vis. · ${o.cliques} cliq.`}))));
+  }
+  box.append(h("p",{class:"hint",style:"margin-top:8px",text:"Dica: no story, use o link com ?utm_source=story (ex: " + location.host + "/seunome?utm_source=story) para saber o que veio de cada lugar. Visitas começaram a ser contadas em 26/11/2026."}));
 }
 
 /* =====================================================================
@@ -751,6 +812,7 @@ async function painelMaster(){
     kpis.append(
       h("div",{class:"kpi"}, h("b",{text:String(todos.length)}), h("span",{text:"clientes"})),
       h("div",{class:"kpi"}, h("b",{text:String(todos.filter(c=>c.ativo).length)}), h("span",{text:"ativos"})),
+      h("div",{class:"kpi"}, h("b",{text:String(todos.reduce((s,c)=>s+Number(c.visitas_30d||0),0))}), h("span",{text:"visitas 30d"})),
       h("div",{class:"kpi"}, h("b",{text:String(todos.reduce((s,c)=>s+Number(c.cliques_30d||0),0))}), h("span",{text:"cliques 30d"}))
     );
     lista.innerHTML = "";
@@ -774,7 +836,7 @@ async function painelMaster(){
             h("a",{href:"/"+c.slug,target:"_blank",text:"/"+c.slug,style:"font-size:13px"})),
           h("span",{class:"badge "+(c.ativo?"on":"off"),text:c.ativo?"ATIVO":"BLOQUEADO"})
         ),
-        h("div",{class:"meta",text:`${c.email} · desde ${dataBR(c.created_at)} · ${c.cliques_30d} cliques/30d`}),
+        h("div",{class:"meta",text:`${c.email} · desde ${dataBR(c.created_at)} · ${c.visitas_30d ?? 0} visitas · ${c.cliques_30d} cliques/30d`}),
         h("div",{class:"meta"},
           c.instagram ? h("a",{href:"https://instagram.com/"+c.instagram,target:"_blank",rel:"noopener",text:"@"+c.instagram}) : "sem Instagram",
           " · ",
@@ -833,6 +895,10 @@ async function detalheCliente(c){
   const dias = n => Date.now() - n*864e5;
   const conta = (arr, n) => arr.filter(x=>new Date(x.created_at).getTime() >= dias(n)).length;
   const hoje = new Date().toDateString();
+
+  // visitas x cliques (servidor)
+  const { data:st } = await sb.rpc("stats_perfil", { p_id:c.id, p_dias:30 });
+  if (st){ const bx = h("div",{class:"box"}, h("h3",{text:"Visitas e cliques (30 dias)"})); desenharStats(bx, st, { links:false }); wrap.append(bx); }
 
   // resumo
   wrap.append(h("div",{class:"kpis"},
@@ -902,7 +968,16 @@ function erroGeral(t){
 }
 
 function iniciar(){
-  if (!CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY || !window.supabase){
+  if (CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY && !window.supabase){
+    limpar("painel");
+    app.append(h("div",{class:"centro"},
+      h("h2",{text:"Não carregou"}),
+      h("p",{text:"Sua internet oscilou. Toque para tentar de novo."}),
+      h("button",{class:"btn",text:"Tentar de novo",onclick:()=>location.reload()})
+    ));
+    return;
+  }
+  if (!CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY){
     limpar("painel");
     app.append(h("div",{class:"centro"},
       h("h2",{text:"Configuração pendente"}),
